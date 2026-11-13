@@ -1,0 +1,1724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Share a cab with LNMIIT batchmates going the same way on the same day.">
+<title>LNMIIT Cab Share</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: one phone-width column that reads like a departure board.
+   Pick a place, then days, then 3-hour slots; the departure time is the loudest thing on every ride. */
+:root {
+  --paper: #F2F1F7;
+  --card: #FFFFFF;
+  --stub: #ECEAF5;
+  --ink: #1B1A2E;
+  --muted: #5B5972;
+  --line: #D9D7E5;
+  --taxi: #FFC61A;
+  --on-taxi: #1B1A2E;
+  --link: #3A31C0;
+  --wa: #0E7A43;
+  --on-wa: #FFFFFF;
+  --ok: #0B6E50;
+  --ok-bg: #DCF2E9;
+  --warn: #A63F08;
+  --warn-bg: #FBE4D3;
+  --full: #5F5D76;
+  --full-bg: #E5E4EE;
+  --danger: #B3261E;
+  --hard: #1B1A2E;
+  --shadow: 0 1px 2px rgba(27, 26, 46, .06), 0 6px 18px rgba(27, 26, 46, .06);
+  --f-display: "Bricolage Grotesque", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #131228; --card: #1D1C38; --stub: #262548; --ink: #F2F1FA; --muted: #ABA9C6; --line: #36345C;
+    --taxi: #FFC61A; --on-taxi: #1B1A2E; --link: #ACA5FF; --wa: #2FD071; --on-wa: #06240F;
+    --ok: #62D8B0; --ok-bg: #12382E; --warn: #FFA670; --warn-bg: #43250F; --full: #A19FBC; --full-bg: #2B2A4A;
+    --danger: #FF8A80; --hard: #000000;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 6px 18px rgba(0, 0, 0, .25);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #131228; --card: #1D1C38; --stub: #262548; --ink: #F2F1FA; --muted: #ABA9C6; --line: #36345C;
+  --taxi: #FFC61A; --on-taxi: #1B1A2E; --link: #ACA5FF; --wa: #2FD071; --on-wa: #06240F;
+  --ok: #62D8B0; --ok-bg: #12382E; --warn: #FFA670; --warn-bg: #43250F; --full: #A19FBC; --full-bg: #2B2A4A;
+  --danger: #FF8A80; --hard: #000000;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 6px 18px rgba(0, 0, 0, .25);
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-body); font-size: 16px; line-height: 1.45; }
+h1, h2, h3, h4, p { margin: 0; }
+h1, h2, h3 { text-wrap: balance; }
+button, input, select, textarea { font: inherit; color: inherit; }
+a { color: var(--link); }
+:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; border-radius: 4px; }
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.checker { height: 10px; background: repeating-conic-gradient(var(--hard) 0 25%, var(--taxi) 0 50%) 0 0 / 20px 20px; }
+.wrap { position: relative; max-width: 760px; margin: 0 auto; padding: 0 16px 96px; }
+
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 18px 0 6px; }
+.eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.top h1 { font-family: var(--f-display); font-weight: 800; font-size: clamp(30px, 8vw, 42px); line-height: .95; letter-spacing: -.02em; margin-top: 2px; }
+.acct { display: flex; align-items: center; gap: 4px; font-size: 14px; color: var(--muted); font-weight: 600; min-width: 0; }
+.acct span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 46vw; }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 40px; padding: 8px 14px;
+  border: 1.5px solid var(--line); border-radius: 10px;
+  background: var(--card); color: var(--ink);
+  font-weight: 600; font-size: 15px; cursor: pointer; text-decoration: none;
+}
+.btn:hover { border-color: var(--ink); }
+.btn[disabled] { opacity: .55; cursor: not-allowed; }
+.btn.primary { background: var(--taxi); color: var(--on-taxi); border-color: var(--hard); box-shadow: 3px 3px 0 var(--hard); font-weight: 700; }
+.btn.primary:hover { transform: translate(-1px, -1px); }
+.btn.primary:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--hard); }
+.btn.wa { background: var(--wa); color: var(--on-wa); border-color: var(--wa); font-weight: 700; }
+.btn.wa:hover { filter: brightness(1.08); border-color: var(--wa); }
+.btn.big { min-height: 48px; padding: 10px 20px; font-size: 17px; }
+.btn.small { min-height: 34px; padding: 5px 10px; font-size: 14px; }
+.btn.quiet { border-color: transparent; background: transparent; color: var(--link); padding-left: 6px; padding-right: 6px; }
+.btn.quiet:hover { border-color: var(--line); }
+.btn.danger { color: var(--danger); }
+.btn.danger:hover { border-color: var(--danger); }
+.fab { position: fixed; right: 16px; bottom: 18px; z-index: 20; min-height: 50px; padding: 10px 18px; border-radius: 26px; font-size: 16px; }
+
+.notice { margin-top: 12px; padding: 10px 14px; border-radius: 10px; background: var(--warn-bg); color: var(--warn); font-weight: 600; font-size: 15px; }
+.preview { margin-top: 12px; padding: 10px 14px; border-radius: 10px; border: 1.5px dashed var(--ink); background: var(--card); font-size: 14px; }
+.preview b { font-weight: 700; }
+.loading { margin-top: 26px; color: var(--muted); font-weight: 600; }
+
+/* landing */
+.landing { padding: 22px 0 8px; }
+.landing h2 { font-family: var(--f-display); font-weight: 800; font-size: clamp(34px, 9vw, 52px); line-height: 1; letter-spacing: -.02em; }
+.landing h2 em { font-style: normal; background: linear-gradient(transparent 62%, var(--taxi) 62%); }
+.landing .lead { margin-top: 12px; color: var(--muted); font-size: 18px; max-width: 46ch; }
+.landing .cta { margin-top: 22px; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.landing .fine { font-size: 14px; color: var(--muted); max-width: 52ch; }
+.steps { list-style: none; counter-reset: step; margin: 26px 0 0; padding: 0; display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+.steps li { counter-increment: step; padding-top: 10px; border-top: 2px solid var(--ink); font-size: 15px; }
+.steps li::before { content: counter(step); display: block; font-family: var(--f-display); font-weight: 800; font-size: 26px; line-height: 1; margin-bottom: 4px; }
+.steps b { display: block; }
+.steps span { color: var(--muted); }
+
+/* board header */
+.hello { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; flex-wrap: wrap; padding: 14px 0 16px; }
+.hello h2 { font-family: var(--f-display); font-weight: 800; font-size: clamp(24px, 6.4vw, 32px); line-height: 1.05; letter-spacing: -.01em; }
+.hello p { color: var(--muted); margin-top: 4px; max-width: 40ch; }
+.tabs { display: flex; gap: 4px; border-bottom: 1.5px solid var(--line); }
+.tabs a { padding: 10px 14px; margin-bottom: -1.5px; font-weight: 700; color: var(--muted); text-decoration: none; border-bottom: 3px solid transparent; }
+.tabs a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--taxi); }
+.count { display: inline-block; min-width: 20px; padding: 0 6px; margin-left: 4px; border-radius: 10px; background: var(--stub); color: var(--ink); font-size: 12px; font-weight: 700; text-align: center; }
+
+.scroller { position: relative; display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 8px; margin: 0 -2px; scrollbar-width: thin; }
+.tiles { padding-top: 16px; }
+.tile {
+  flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  width: 136px; padding: 10px 12px; text-align: left;
+  border: 1.5px solid var(--line); border-radius: 14px; background: var(--card); color: var(--ink); cursor: pointer;
+}
+.tile:hover { border-color: var(--ink); }
+.tile .ic { font-size: 22px; line-height: 1.1; }
+.tile .nm { font-weight: 700; font-size: 14px; line-height: 1.2; }
+.tile .ct { font-size: 12px; font-weight: 600; color: var(--muted); }
+.tile[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.tile[aria-pressed="true"] .ct { color: var(--paper); opacity: .8; }
+.tile.has .ct { color: var(--ok); }
+.tile[aria-pressed="true"].has .ct { color: var(--taxi); opacity: 1; }
+
+.filters { display: flex; flex-direction: column; gap: 10px; padding: 12px 0 6px; }
+.filter-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.filter-label { font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.chip {
+  flex: 0 0 auto; display: inline-flex; align-items: baseline; gap: 6px;
+  padding: 7px 12px; min-height: 38px;
+  border: 1.5px solid var(--line); border-radius: 999px; background: var(--card); color: var(--ink);
+  font-weight: 600; font-size: 14px; cursor: pointer; white-space: nowrap;
+}
+.chip small { font-size: 12px; font-weight: 500; color: var(--muted); }
+.chip .n { font-size: 12px; font-weight: 700; padding: 0 6px; border-radius: 9px; background: var(--stub); color: var(--ink); }
+.chip.zero { color: var(--muted); }
+.chip:hover { border-color: var(--ink); }
+.chip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.chip[aria-pressed="true"] small { color: var(--paper); opacity: .8; }
+.chip[aria-pressed="true"] .n { background: var(--taxi); color: var(--on-taxi); }
+.datepick { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.datepick input { min-height: 34px; padding: 4px 8px; font-size: 14px; }
+.filterline { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+.seg { display: inline-flex; border: 1.5px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--card); }
+.seg button { border: 0; background: transparent; padding: 8px 12px; font-size: 14px; font-weight: 600; cursor: pointer; color: var(--muted); }
+.seg button + button { border-left: 1.5px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.check { position: relative; display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--muted); }
+input[type="text"], input[type="tel"], input[type="date"], input[type="time"], select {
+  min-height: 42px; padding: 8px 10px; border: 1.5px solid var(--line); border-radius: 10px;
+  background: var(--card); color: var(--ink); font-size: 16px; max-width: 100%;
+}
+input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--link); }
+input:disabled { opacity: .6; }
+
+.summary { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 10px 0 2px; color: var(--muted); font-size: 14px; font-weight: 600; }
+.summary strong { color: var(--ink); }
+.day { margin-top: 22px; }
+.dayhead { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; padding-bottom: 8px; border-bottom: 2px solid var(--ink); }
+.dayhead .d { font-family: var(--f-display); font-weight: 800; font-size: 24px; letter-spacing: -.01em; }
+.dayhead .rel { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 6px; background: var(--taxi); color: var(--on-taxi); }
+.dayhead .n { margin-left: auto; font-size: 13px; font-weight: 600; color: var(--muted); }
+.slothead { display: flex; align-items: baseline; gap: 8px; margin: 16px 0 8px; font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.slothead span { letter-spacing: 0; text-transform: none; font-weight: 600; }
+.cards { display: flex; flex-direction: column; gap: 10px; }
+
+.ride { position: relative; display: grid; grid-template-columns: 92px minmax(0, 1fr); background: var(--card); border: 1.5px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden; }
+.ride.is-mine { border-color: var(--taxi); }
+.ride.fresh { animation: rise .4s ease both; }
+@keyframes rise { from { opacity: .2; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.stub { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 14px 6px; background: var(--stub); border-right: 1.5px dashed var(--line); text-align: center; }
+.ride.is-mine .stub { background: var(--taxi); color: var(--on-taxi); border-right-color: var(--on-taxi); }
+.stub-date { font-size: 12px; font-weight: 700; margin-bottom: 4px; }
+.stub-time { font-family: var(--f-display); font-weight: 800; font-size: 27px; line-height: 1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.stub-ap { font-size: 12px; font-weight: 700; letter-spacing: .08em; }
+.stub-flex { margin-top: 4px; font-size: 11px; font-weight: 600; opacity: .8; }
+.body { display: flex; flex-direction: column; gap: 8px; padding: 14px; min-width: 0; }
+.route { font-family: var(--f-display); font-weight: 700; font-size: 19px; line-height: 1.2; overflow-wrap: anywhere; }
+.route .arrow { color: var(--muted); padding: 0 4px; }
+.by { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
+.avatar { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; color: #FFFFFF; font-weight: 700; font-size: 13px; }
+.by .who { color: var(--ink); font-weight: 600; }
+.badge { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 6px; background: var(--taxi); color: var(--on-taxi); }
+.badge.in { background: var(--ok-bg); color: var(--ok); }
+.badge.wait { background: var(--warn-bg); color: var(--warn); }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.tagc { font-size: 13px; font-weight: 600; padding: 2px 9px; border-radius: 999px; background: var(--stub); color: var(--ink); }
+.note { font-size: 14px; overflow-wrap: anywhere; }
+.seatline { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.seats { display: inline-flex; gap: 4px; }
+.seat { width: 14px; height: 16px; border-radius: 5px 5px 3px 3px; border: 2px solid var(--ok); }
+.seat.taken { background: var(--full); border-color: var(--full); }
+.pill { font-size: 13px; font-weight: 700; padding: 3px 10px; border-radius: 999px; }
+.pill.ok { background: var(--ok-bg); color: var(--ok); }
+.pill.warn { background: var(--warn-bg); color: var(--warn); }
+.pill.full { background: var(--full-bg); color: var(--full); }
+.pill.bump { animation: bump .6s ease; }
+@keyframes bump { 0% { transform: scale(1); } 35% { transform: scale(1.18); } 100% { transform: scale(1); } }
+.joined-n { font-size: 13px; color: var(--muted); }
+.contact { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+.phone { font-weight: 700; font-size: 16px; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.stepper { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--muted); }
+.stepper .val { min-width: 22px; text-align: center; font-size: 17px; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
+.stepper .btn { min-width: 34px; padding: 4px 0; font-size: 18px; line-height: 1; }
+.joiners { padding: 10px 12px; border-radius: 10px; background: var(--stub); font-size: 14px; }
+.joiners h4 { font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+.joiners ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.joiners li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; overflow-wrap: anywhere; }
+
+.empty { margin-top: 22px; padding: 22px 18px; border: 1.5px dashed var(--line); border-radius: 14px; background: var(--card); }
+.empty h2 { font-family: var(--f-display); font-weight: 800; font-size: 24px; line-height: 1.1; }
+.empty p { color: var(--muted); margin-top: 6px; max-width: 60ch; }
+.empty .actions { margin-top: 14px; }
+.section-title { margin-top: 24px; padding-bottom: 8px; border-bottom: 2px solid var(--ink); font-family: var(--f-display); font-weight: 800; font-size: 22px; }
+.section-empty { margin-top: 10px; color: var(--muted); }
+
+dialog { width: min(560px, calc(100% - 24px)); max-height: calc(100% - 24px); padding: 0; border: 1.5px solid var(--ink); border-radius: 16px; background: var(--card); color: var(--ink); overflow: auto; }
+dialog::backdrop { background: rgba(15, 14, 32, .55); }
+.dlg { position: relative; display: flex; flex-direction: column; gap: 14px; padding: 20px 18px; }
+.dlg h2 { font-family: var(--f-display); font-weight: 800; font-size: 26px; line-height: 1.05; }
+.dlg .sub { color: var(--muted); font-size: 15px; }
+.field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.field > label, .field > .lbl { font-size: 14px; font-weight: 700; }
+.hint { font-size: 13px; color: var(--muted); font-weight: 400; }
+.err { font-size: 13px; font-weight: 600; color: var(--danger); }
+.field input, .field select { width: 100%; }
+.field .bad { border-color: var(--danger); }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.routegrid { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 8px; align-items: start; }
+.routegrid .swap { margin-top: 24px; min-width: 42px; padding: 8px 0; }
+.pick { display: flex; flex-wrap: wrap; gap: 8px; }
+.pick label, .pick button {
+  position: relative; display: inline-flex; align-items: baseline; gap: 6px; padding: 7px 12px;
+  border: 1.5px solid var(--line); border-radius: 999px; background: var(--card); color: var(--ink);
+  font-size: 14px; font-weight: 600; cursor: pointer;
+}
+.pick small { font-weight: 500; color: var(--muted); font-size: 12px; }
+.pick input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.pick label:has(input:checked), .pick button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.pick label:has(input:checked) small { color: var(--paper); opacity: .8; }
+.pick label:has(input:focus-visible) { outline: 2px solid var(--link); outline-offset: 2px; }
+.match { padding: 10px 12px; border-radius: 12px; background: var(--ok-bg); color: var(--ok); font-size: 14px; font-weight: 600; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.match .btn { color: var(--ink); }
+.dlg-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; padding-top: 4px; }
+.callbox { padding: 12px; border-radius: 12px; background: var(--stub); display: flex; flex-direction: column; gap: 8px; }
+.callbox .contact { border-top: 0; padding-top: 0; }
+.ridesum { font-weight: 700; overflow-wrap: anywhere; }
+@media (max-width: 440px) {
+  .ride { grid-template-columns: 78px minmax(0, 1fr); }
+  .stub-time { font-size: 23px; }
+  .row2 { grid-template-columns: 1fr; }
+  .routegrid { grid-template-columns: 1fr; }
+  .routegrid .swap { margin-top: 0; justify-self: start; padding: 6px 12px; }
+  .hello .btn.big { width: 100%; }
+}
+.toast { position: fixed; left: 50%; bottom: 80px; transform: translateX(-50%); width: max-content; max-width: calc(100% - 32px); padding: 10px 16px; border-radius: 10px; background: var(--ink); color: var(--paper); font-weight: 600; font-size: 15px; z-index: 50; box-shadow: var(--shadow); }
+@media (prefers-reduced-motion: reduce) {
+  .ride.fresh, .pill.bump { animation: none; }
+  .btn.primary:hover, .btn.primary:active { transform: none; }
+}
+</style>
+</head>
+<body>
+<div class="checker" aria-hidden="true"></div>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">LNMIIT, Jaipur</p>
+      <h1>Cab Share</h1>
+    </div>
+    <div class="acct" id="acct" hidden>
+      <span id="acct-name"></span>
+      <button type="button" class="btn small quiet" id="btn-signout">Sign out</button>
+    </div>
+  </header>
+
+  <div class="preview" id="preview" hidden><b>Preview mode.</b> These are sample rides and nothing you do here is saved. The site goes live once its database is connected.</div>
+  <div class="notice" id="notice" role="status" hidden></div>
+  <p class="loading" id="boot">Getting things ready…</p>
+
+  <section class="landing" id="landing" hidden>
+    <h2>Going somewhere? <em>Split the cab.</em></h2>
+    <p class="lead">See which batchmates are leaving campus on your day, message them on WhatsApp, and share the fare.</p>
+    <div class="cta">
+      <button type="button" class="btn primary big" id="btn-signin">Sign in with your LNMIIT Google account</button>
+      <p class="err" id="signin-err" role="alert" hidden></p>
+      <p class="fine" id="signin-fine"></p>
+    </div>
+    <ol class="steps">
+      <li><b>Post your trip</b><span>Route, date, time slot, free seats and your number.</span></li>
+      <li><b>Batchmates message you</b><span>Each one who takes a seat brings the count down by one.</span></li>
+      <li><b>Remove it when sorted</b><span>Cab full? Take the post down in one tap.</span></li>
+    </ol>
+  </section>
+
+  <div id="app" hidden>
+    <section class="hello">
+      <div>
+        <h2 id="hello-title">Where are you headed?</h2>
+        <p>Tap a place to see who is going, or post your own trip.</p>
+      </div>
+      <button type="button" class="btn primary big" id="btn-post">+ Post a ride</button>
+    </section>
+
+    <nav class="tabs" aria-label="Views">
+      <a href="#rides" id="tab-rides">All rides</a>
+      <a href="#mine" id="tab-mine">My rides<span class="count" id="mine-count" hidden></span></a>
+    </nav>
+
+    <main>
+      <section id="view-rides" aria-labelledby="tab-rides">
+        <div class="scroller tiles" id="tiles" role="group" aria-label="Places"></div>
+        <div class="filters">
+          <div class="filterline">
+            <div class="seg" id="dir-seg" role="group" aria-label="Direction">
+              <button type="button" data-dir="any" data-fid="dir-any">Both ways</button>
+              <button type="button" data-dir="from" data-fid="dir-from">From campus</button>
+              <button type="button" data-dir="to" data-fid="dir-to">To campus</button>
+            </div>
+            <label class="check" for="f-open"><input type="checkbox" id="f-open"> Only free seats</label>
+          </div>
+          <div>
+            <div class="filter-head">
+              <p class="filter-label" id="lbl-date">Date</p>
+              <label class="datepick" for="f-date-pick">Other date <input type="date" id="f-date-pick"></label>
+            </div>
+            <div class="scroller" id="date-chips" role="group" aria-labelledby="lbl-date"></div>
+          </div>
+          <div>
+            <div class="filter-head"><p class="filter-label" id="lbl-slot">Time slot</p></div>
+            <div class="scroller" id="slot-chips" role="group" aria-labelledby="lbl-slot"></div>
+          </div>
+        </div>
+        <div class="summary" id="summary"></div>
+        <div id="list"></div>
+      </section>
+
+      <section id="view-mine" aria-labelledby="tab-mine" hidden>
+        <div id="mine"></div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<button type="button" class="btn primary fab" id="fab" hidden>+ Post a ride</button>
+
+<dialog id="dlg-post" aria-labelledby="post-title">
+  <form class="dlg" id="form-post" novalidate>
+    <h2 id="post-title">Post a ride</h2>
+    <p class="sub" id="post-sub"></p>
+
+    <div class="routegrid">
+      <div class="field">
+        <label for="p-from-sel">From</label>
+        <select id="p-from-sel"></select>
+        <div id="p-from-other-wrap" hidden>
+          <label class="vh" for="p-from-other">Starting place</label>
+          <input type="text" id="p-from-other" maxlength="40" placeholder="Type the place" autocomplete="off">
+        </div>
+        <p class="err" id="p-from-err" hidden></p>
+      </div>
+      <button type="button" class="btn swap" id="p-swap" aria-label="Swap from and to" title="Swap from and to">&#8646;</button>
+      <div class="field">
+        <label for="p-to-sel">To</label>
+        <select id="p-to-sel"></select>
+        <div id="p-to-other-wrap" hidden>
+          <label class="vh" for="p-to-other">Destination</label>
+          <input type="text" id="p-to-other" maxlength="40" placeholder="Type the place" autocomplete="off">
+        </div>
+        <p class="err" id="p-to-err" hidden></p>
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label for="p-date">Date</label>
+        <input type="date" id="p-date" required>
+        <p class="hint" id="p-date-hint" hidden></p>
+        <p class="err" id="p-date-err" hidden></p>
+      </div>
+      <div class="field">
+        <label for="p-time">Exact time <span class="hint">(optional)</span></label>
+        <input type="time" id="p-time" step="300">
+        <p class="hint">Leave empty if you are flexible within the slot.</p>
+      </div>
+    </div>
+
+    <div class="match" id="p-match" hidden></div>
+
+    <div class="field">
+      <span class="lbl" id="p-slot-lbl">Time slot</span>
+      <div class="pick" id="p-slots" role="radiogroup" aria-labelledby="p-slot-lbl"></div>
+      <p class="err" id="p-slot-err" hidden></p>
+    </div>
+
+    <div class="field">
+      <label for="p-seats" id="p-seats-lbl">Seats you can share</label>
+      <select id="p-seats"></select>
+      <p class="hint" id="p-seats-hint"></p>
+    </div>
+
+    <div class="field">
+      <span class="lbl" id="p-veh-lbl">Vehicle <span class="hint">(optional)</span></span>
+      <div class="pick" id="p-veh" role="group" aria-labelledby="p-veh-lbl"></div>
+    </div>
+
+    <div class="field">
+      <span class="lbl" id="p-why-lbl">Trip is for <span class="hint">(optional)</span></span>
+      <div class="pick" id="p-why" role="group" aria-labelledby="p-why-lbl"></div>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label for="p-name">Your name</label>
+        <input type="text" id="p-name" maxlength="40" autocomplete="name">
+        <p class="err" id="p-name-err" hidden></p>
+      </div>
+      <div class="field">
+        <label for="p-phone">WhatsApp / mobile number</label>
+        <input type="tel" id="p-phone" inputmode="numeric" maxlength="16" autocomplete="tel-national" placeholder="10 digits">
+        <p class="err" id="p-phone-err" hidden></p>
+      </div>
+    </div>
+    <p class="hint">Your name and number are shown to signed-in LNMIIT students so they can message you.</p>
+
+    <div class="field">
+      <label for="p-note">Note <span class="hint">(optional)</span></label>
+      <input type="text" id="p-note" maxlength="140" placeholder="Flight number, luggage, pickup gate…" autocomplete="off">
+    </div>
+
+    <div class="dlg-actions">
+      <button type="button" class="btn" id="p-cancel">Cancel</button>
+      <button type="submit" class="btn primary" id="p-submit">Post ride</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlg-join" aria-labelledby="join-title">
+  <form class="dlg" id="form-join" novalidate>
+    <h2 id="join-title">Take a seat</h2>
+    <p class="ridesum" id="j-sum"></p>
+    <div class="callbox">
+      <p><strong>First, message <span id="j-poster"></span>.</strong> Agree on the pickup point and fare split, then take your seat here so the count stays right.</p>
+      <div class="contact" id="j-contact"></div>
+    </div>
+    <div class="field">
+      <label for="j-seats">Seats you need</label>
+      <select id="j-seats"></select>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label for="j-name">Your name</label>
+        <input type="text" id="j-name" maxlength="40" autocomplete="name">
+        <p class="err" id="j-name-err" hidden></p>
+      </div>
+      <div class="field">
+        <label for="j-phone">WhatsApp / mobile number</label>
+        <input type="tel" id="j-phone" inputmode="numeric" maxlength="16" autocomplete="tel-national" placeholder="10 digits">
+        <p class="err" id="j-phone-err" hidden></p>
+      </div>
+    </div>
+    <p class="hint">Your name and number appear on this ride for the person who posted it.</p>
+    <p class="err" id="j-form-err" role="alert" hidden></p>
+    <div class="dlg-actions">
+      <button type="button" class="btn" id="j-cancel">Cancel</button>
+      <button type="submit" class="btn primary" id="j-submit">Take seat</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlg-confirm" aria-labelledby="c-title">
+  <div class="dlg">
+    <h2 id="c-title"></h2>
+    <p class="sub" id="c-body"></p>
+    <div class="dlg-actions" id="c-actions"></div>
+  </div>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script>
+/* =====================================================================
+   SETUP (the only part you edit)
+   Config of the Firebase project lnmiit-cab-share (Project settings > Your apps).
+   This config is meant to be public; access is controlled by the database rules.
+   If apiKey is emptied the page runs in preview mode with sample rides.
+   ===================================================================== */
+var FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBDg8Ah6EsJpSJukltLUgiMB2c9MinYoew",
+  authDomain: "lnmiit-cab-share.firebaseapp.com",
+  projectId: "lnmiit-cab-share",
+  storageBucket: "lnmiit-cab-share.firebasestorage.app",
+  messagingSenderId: "918827959272",
+  appId: "1:918827959272:web:5f2c7c0e50852953be1a5d"
+};
+var COLLEGE_EMAIL_DOMAIN = "lnmiit.ac.in";   // only these Google accounts can sign in
+var FIREBASE_SDK = "https://www.gstatic.com/firebasejs/10.14.1/";
+/* ===================================================================== */
+
+(function () {
+  'use strict';
+
+  /* ---------- constants ---------- */
+  var SLOTS = [
+    { id: 's00', label: 'Midnight',       range: '12–2 AM',      short: '12–2',  ap: 'AM',    start: 0,  end: 2 },
+    { id: 's02', label: 'Before dawn',    range: '2–5 AM',       short: '2–5',   ap: 'AM',    start: 2,  end: 5 },
+    { id: 's05', label: 'Early morning',  range: '5–8 AM',       short: '5–8',   ap: 'AM',    start: 5,  end: 8 },
+    { id: 's08', label: 'Late morning',   range: '8–11 AM',      short: '8–11',  ap: 'AM',    start: 8,  end: 11 },
+    { id: 's11', label: 'Afternoon',      range: '11 AM–2 PM',   short: '11–2',  ap: 'AM–PM', start: 11, end: 14 },
+    { id: 's14', label: 'Late afternoon', range: '2–5 PM',       short: '2–5',   ap: 'PM',    start: 14, end: 17 },
+    { id: 's17', label: 'Evening',        range: '5–8 PM',       short: '5–8',   ap: 'PM',    start: 17, end: 20 },
+    { id: 's20', label: 'Night',          range: '8–10 PM',      short: '8–10',  ap: 'PM',    start: 20, end: 22 },
+    { id: 's22', label: 'Late night',     range: '10 PM–12 AM',  short: '10–12', ap: 'PM',    start: 22, end: 24 }
+  ];
+  var SLOT_BY_ID = {};
+  SLOTS.forEach(function (s) { SLOT_BY_ID[s.id] = s; });
+
+  var HOME = 'LNMIIT';
+  var PLACES = [
+    { name: HOME, icon: '🎓' },
+    { name: 'Jaipur Airport', icon: '✈️' },
+    { name: 'Jaipur Junction railway station', icon: '🚆' },
+    { name: 'Gandhinagar railway station', icon: '🚆' },
+    { name: 'Durgapura railway station', icon: '🚆' },
+    { name: 'Sindhi Camp bus stand', icon: '🚌' },
+    { name: 'Narayan Singh Circle bus stop', icon: '🚌' },
+    { name: 'World Trade Park', icon: '🛍️' }
+  ];
+  var PLACE_ICON = {};
+  PLACES.forEach(function (p) { PLACE_ICON[p.name] = p.icon; });
+  var VEHICLES = [
+    { id: 'mini', label: 'Mini / hatchback', icon: '🚗' },
+    { id: 'sedan', label: 'Sedan', icon: '🚘' },
+    { id: 'suv', label: 'SUV / 6-seater', icon: '🚙' },
+    { id: 'van', label: 'Mini van', icon: '🚐' },
+    { id: 'auto', label: 'Auto', icon: '🛺' },
+    { id: 'tbd', label: 'Not booked yet', icon: '⏳' }
+  ];
+  var PURPOSES = [
+    { id: 'home', label: 'Going home', icon: '🏠' },
+    { id: 'exam', label: 'Exam', icon: '📝' },
+    { id: 'flight', label: 'Catching a flight', icon: '✈️' },
+    { id: 'train', label: 'Catching a train', icon: '🚆' },
+    { id: 'work', label: 'Interview / internship', icon: '💼' },
+    { id: 'outing', label: 'Outing', icon: '🎉' },
+    { id: 'back', label: 'Back to campus', icon: '🎓' }
+  ];
+  function byId(list) { var m = {}; list.forEach(function (x) { m[x.id] = x; }); return m; }
+  var VEH_BY_ID = byId(VEHICLES), WHY_BY_ID = byId(PURPOSES);
+
+  var OTHER = '__other';
+  var MAX_NEW_SEATS = 6;      // seats a new post can offer
+  var MAX_TOTAL_SEATS = 8;    // hard cap on a ride's total
+  var MAX_DAYS_AHEAD = 120;
+  var MAX_ACTIVE_POSTS = 10;
+  var IST_MIN = 330;          // all dates and times on this board are India time
+  var DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  var AVATAR_COLORS = ['#3A31C0', '#0B6E50', '#A63F08', '#8A1C7C', '#1F5FA8', '#6B4F00'];
+
+  /* ---------- state ---------- */
+  var S = {
+    mode: '',               // 'demo' or 'live'
+    phase: 'boot',          // boot | signedout | board | error
+    view: 'rides',
+    fDate: 'all', fSlot: 'all', fDir: 'any', fPlace: 'any', fOpen: false,
+    user: null, uid: null,
+    days: new Map(),        // date -> { u: { uid: { rides, joins } } }
+    loaded: false, slow: false, dead: '', bootError: '', authMsg: '',
+    editing: null, joining: null,
+    seen: null, lastLeft: {}
+  };
+  var store = null, unsubscribe = null, slowTimer = null;
+
+  /* ---------- small helpers ---------- */
+  function $(id) { return document.getElementById(id); }
+  function h(tag, props) {
+    var el = document.createElement(tag);
+    if (props) {
+      Object.keys(props).forEach(function (k) {
+        var v = props[k];
+        if (v == null || v === false) return;
+        if (k === 'class') el.className = v;
+        else if (k === 'text') el.textContent = v;
+        else if (k === 'fid') el.dataset.fid = v;
+        else if (k.slice(0, 2) === 'on') el.addEventListener(k.slice(2), v);
+        else if (v === true) el.setAttribute(k, '');
+        else el.setAttribute(k, v);
+      });
+    }
+    for (var i = 2; i < arguments.length; i++) appendKid(el, arguments[i]);
+    return el;
+  }
+  function appendKid(el, kid) {
+    if (kid == null || kid === false) return;
+    if (Array.isArray(kid)) { kid.forEach(function (k) { appendKid(el, k); }); return; }
+    el.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
+  }
+  function setKids(el, kids) {
+    el.replaceChildren();
+    appendKid(el, kids);
+  }
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+  function cleanStr(v, max) { return typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, max) : ''; }
+  function isObj(o) { return !!o && typeof o === 'object' && !Array.isArray(o); }
+  function plural(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
+  function seatWord(n) { return plural(n, 'seat', 'seats'); }
+  function isHome(place) { return /lnm/i.test(place); }
+  function samePlace(a, b) { return a.toLowerCase() === b.toLowerCase(); }
+  function placeIcon(name) { return PLACE_ICON[name] || '📍'; }
+  function firstName(name) { return cleanStr(name, 40).split(' ')[0] || ''; }
+  function hashCode(s) { var x = 0; for (var i = 0; i < s.length; i++) x = (x * 31 + s.charCodeAt(i)) | 0; return Math.abs(x); }
+
+  /* ---------- dates and times (India time) ---------- */
+  function istToday() { return new Date(Date.now() + IST_MIN * 60000).toISOString().slice(0, 10); }
+  function validDate(s) {
+    if (typeof s !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+    var p = s.split('-').map(Number);
+    var d = new Date(Date.UTC(p[0], p[1] - 1, p[2]));
+    return d.getUTCFullYear() === p[0] && d.getUTCMonth() === p[1] - 1 && d.getUTCDate() === p[2];
+  }
+  function addDays(s, n) {
+    var p = s.split('-').map(Number);
+    return new Date(Date.UTC(p[0], p[1] - 1, p[2] + n)).toISOString().slice(0, 10);
+  }
+  function istToMs(dateStr, hour, minute) {
+    var p = dateStr.split('-').map(Number);
+    return Date.UTC(p[0], p[1] - 1, p[2], hour, minute) - IST_MIN * 60000;
+  }
+  function fmtDate(s) {
+    var p = s.split('-').map(Number);
+    var d = new Date(Date.UTC(p[0], p[1] - 1, p[2]));
+    return DAYS[d.getUTCDay()] + ' ' + p[2] + ' ' + MONTHS[p[1] - 1];
+  }
+  function relDate(s) {
+    var t = istToday();
+    if (s === t) return 'Today';
+    if (s === addDays(t, 1)) return 'Tomorrow';
+    return '';
+  }
+  function validTime(t) { return typeof t === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(t); }
+  function timeMinutes(t) { return Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5)); }
+  function slotForTime(t) {
+    var hr = Number(t.slice(0, 2));
+    for (var i = 0; i < SLOTS.length; i++) if (hr >= SLOTS[i].start && hr < SLOTS[i].end) return SLOTS[i];
+    return null;
+  }
+  function fmt12(t) {
+    var hr = Number(t.slice(0, 2)), mi = t.slice(3, 5);
+    return { main: (hr % 12 === 0 ? 12 : hr % 12) + ':' + mi, ap: hr < 12 ? 'AM' : 'PM' };
+  }
+  // The moment a ride stops being listed: 30 minutes after an exact time, or the end of its slot.
+  function rideExpiry(date, slotId, time) {
+    if (time) return istToMs(date, Number(time.slice(0, 2)), Number(time.slice(3, 5))) + 30 * 60000;
+    return istToMs(date, SLOT_BY_ID[slotId].end, 0);
+  }
+  function whenText(r) {
+    var slot = SLOT_BY_ID[r.slot];
+    if (r.time) { var t = fmt12(r.time); return fmtDate(r.date) + ', ' + t.main + ' ' + t.ap; }
+    return fmtDate(r.date) + ', ' + slot.label.toLowerCase() + ' (' + slot.range + ')';
+  }
+  function ago(ms) {
+    if (!ms) return '';
+    var m = Math.floor((Date.now() - ms) / 60000);
+    if (m < 1) return 'just now';
+    if (m < 60) return m + ' min ago';
+    if (m < 1440) return Math.floor(m / 60) + ' h ago';
+    return plural(Math.floor(m / 1440), 'day', 'days') + ' ago';
+  }
+
+  /* ---------- phone ---------- */
+  function normPhone(v) {
+    var d = String(v || '').replace(/\D/g, '');
+    if (d.length === 12 && d.slice(0, 2) === '91') d = d.slice(2);
+    else if (d.length === 11 && d.charAt(0) === '0') d = d.slice(1);
+    return /^[6-9]\d{9}$/.test(d) ? d : '';
+  }
+  function fmtPhone(p) { return p.slice(0, 5) + ' ' + p.slice(5); }
+
+  /* ---------- remembered name and number (this device only, per signed-in student) ---------- */
+  function profileKey() { return 'cabshare.profile.' + (S.uid || 'anon'); }
+  function loadProfile() {
+    try {
+      var p = JSON.parse(localStorage.getItem(profileKey()) || '{}');
+      return { name: cleanStr(p.name, 40), phone: normPhone(p.phone) };
+    } catch (e) { return { name: '', phone: '' }; }
+  }
+  function saveProfile(name, phone) {
+    try { localStorage.setItem(profileKey(), JSON.stringify({ name: name, phone: phone })); } catch (e) { /* fine without it */ }
+  }
+
+  /* ---------- reading shared data (never trusted as-is) ---------- */
+  function parseRide(owner, rid, r, date) {
+    if (!isObj(r)) return null;
+    if (!/^[A-Za-z0-9_-]{1,40}$/.test(rid)) return null;
+    var slot = SLOT_BY_ID[r.slot];
+    if (!slot) return null;
+    var time = validTime(r.time) && slotForTime(r.time) === slot ? r.time : '';
+    if (!Number.isInteger(r.seats) || r.seats < 0 || r.seats > MAX_TOTAL_SEATS) return null;
+    var from = cleanStr(r.from, 40), to = cleanStr(r.to, 40), name = cleanStr(r.name, 40);
+    var phone = normPhone(r.phone);
+    if (!from || !to || !name || !phone) return null;
+    return {
+      owner: owner, rid: rid, key: owner + '__' + rid,
+      from: from, to: to, date: date, slot: slot.id, time: time,
+      seats: r.seats, name: name, phone: phone, note: cleanStr(r.note, 140),
+      veh: VEH_BY_ID[r.veh] ? r.veh : '', why: WHY_BY_ID[r.why] ? r.why : '',
+      createdAt: typeof r.createdAt === 'number' ? r.createdAt : 0,
+      expires: rideExpiry(date, slot.id, time)
+    };
+  }
+  function parseJoin(uid, j) {
+    if (!isObj(j)) return null;
+    if (!Number.isInteger(j.seats) || j.seats < 1 || j.seats > MAX_NEW_SEATS) return null;
+    var name = cleanStr(j.name, 40), phone = normPhone(j.phone);
+    if (!name || !phone) return null;
+    return { uid: uid, seats: j.seats, name: name, phone: phone, at: typeof j.at === 'number' ? j.at : 0, standby: false };
+  }
+  // Joins for one ride, oldest first. Seats are handed out in that order; anyone who does not fit is on standby.
+  function allocate(joins, totalSeats) {
+    joins.sort(function (a, b) { return a.at - b.at || (a.uid < b.uid ? -1 : a.uid > b.uid ? 1 : 0); });
+    var used = 0;
+    joins.forEach(function (j) {
+      if (used + j.seats <= totalSeats) { j.standby = false; used += j.seats; }
+      else j.standby = true;
+    });
+    return used;
+  }
+  // Everyone who joined ride `key`, read from one day document.
+  function joinsInDay(dayData, key, owner) {
+    var out = [];
+    if (!isObj(dayData) || !isObj(dayData.u)) return out;
+    Object.keys(dayData.u).forEach(function (uid) {
+      var e = dayData.u[uid];
+      if (uid === owner || !isObj(e) || !isObj(e.joins) || !Object.prototype.hasOwnProperty.call(e.joins, key)) return;
+      var j = parseJoin(uid, e.joins[key]);
+      if (j) out.push(j);
+    });
+    return out;
+  }
+  function computeRides() {
+    var now = Date.now();
+    var rides = [];
+    S.days.forEach(function (data, date) {
+      if (!validDate(date) || !isObj(data) || !isObj(data.u)) return;
+      Object.keys(data.u).forEach(function (owner) {
+        var e = data.u[owner];
+        if (!isObj(e) || !isObj(e.rides)) return;
+        Object.keys(e.rides).slice(0, 20).forEach(function (rid) {
+          var r = parseRide(owner, rid, e.rides[rid], date);
+          if (!r || r.expires <= now) return;
+          r.joins = joinsInDay(data, r.key, owner);
+          r.used = allocate(r.joins, r.seats);
+          r.left = r.seats - r.used;
+          r.mine = !!S.uid && owner === S.uid;
+          r.myJoin = null;
+          if (S.uid) r.joins.forEach(function (j) { if (j.uid === S.uid) r.myJoin = j; });
+          rides.push(r);
+        });
+      });
+    });
+    rides.sort(function (a, b) {
+      if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+      var sa = SLOT_BY_ID[a.slot].start, sb = SLOT_BY_ID[b.slot].start;
+      if (sa !== sb) return sa - sb;
+      var ta = a.time ? timeMinutes(a.time) : -1, tb = b.time ? timeMinutes(b.time) : -1;
+      if (ta !== tb) return ta - tb;
+      return a.createdAt - b.createdAt || (a.key < b.key ? -1 : 1);
+    });
+    return rides;
+  }
+
+  /* ---------- storage ----------
+     Both stores keep one document per travel date:
+       days/2026-12-15 = { u: { <student id>: { rides: {...}, joins: {...} } } }
+     A student can only change their own entry. store.mutate() reads the day
+     documents, lets fn edit the student's own entries, and writes them back
+     as one all-or-nothing step, so two people cannot take the same last seat. */
+  function normEntry(e) {
+    var out = { rides: {}, joins: {} };
+    if (isObj(e)) {
+      if (isObj(e.rides)) out.rides = e.rides;
+      if (isObj(e.joins)) out.joins = e.joins;
+    }
+    return out;
+  }
+  function packEntry(e) {
+    var hasRides = Object.keys(e.rides).length > 0, hasJoins = Object.keys(e.joins).length > 0;
+    if (!hasRides && !hasJoins) return null;
+    var out = {};
+    if (hasRides) out.rides = e.rides;
+    if (hasJoins) out.joins = e.joins;
+    return out;
+  }
+
+  async function liveStore(cfg) {
+    var mods = await Promise.all([
+      import(FIREBASE_SDK + 'firebase-app.js'),
+      import(FIREBASE_SDK + 'firebase-auth.js'),
+      import(FIREBASE_SDK + 'firebase-firestore.js')
+    ]);
+    var A = mods[0], AU = mods[1], F = mods[2];
+    var app = A.initializeApp(cfg);
+    var auth = AU.getAuth(app);
+    var db = F.getFirestore(app);
+    var provider = new AU.GoogleAuthProvider();
+    provider.setCustomParameters({ hd: COLLEGE_EMAIL_DOMAIN, prompt: 'select_account' });
+    return {
+      onAuth: function (cb) {
+        AU.onAuthStateChanged(auth, function (u) {
+          cb(u ? { uid: u.uid, name: u.displayName || '', email: u.email || '' } : null);
+        });
+      },
+      signIn: function () { return AU.signInWithPopup(auth, provider); },
+      signOut: function () { return AU.signOut(auth); },
+      subscribe: function (fromDay, toDay, onData, onError) {
+        var q = F.query(F.collection(db, 'days'), F.where(F.documentId(), '>=', fromDay), F.where(F.documentId(), '<=', toDay));
+        return F.onSnapshot(q, function (snap) {
+          var m = new Map();
+          snap.forEach(function (d) { m.set(d.id, d.data()); });
+          onData(m, !!(snap.metadata && snap.metadata.fromCache));
+        }, onError);
+      },
+      mutate: function (dates, fn) {
+        var uid = auth.currentUser && auth.currentUser.uid;
+        if (!uid) return Promise.reject(userError('Sign in again to continue.'));
+        return F.runTransaction(db, async function (tx) {
+          var refs = dates.map(function (d) { return F.doc(db, 'days', d); });
+          var snaps = [];
+          for (var i = 0; i < refs.length; i++) snaps.push(await tx.get(refs[i]));
+          var mine = {}, days = {};
+          dates.forEach(function (d, i) {
+            days[d] = snaps[i].exists() ? snaps[i].data() : null;
+            mine[d] = normEntry(days[d] && isObj(days[d].u) && days[d].u[uid] ? clone(days[d].u[uid]) : null);
+          });
+          fn(mine, days);
+          dates.forEach(function (d, i) {
+            var packed = packEntry(mine[d]);
+            var had = !!(days[d] && isObj(days[d].u) && days[d].u[uid]);
+            if (!snaps[i].exists()) {
+              if (packed) { var fresh = { u: {} }; fresh.u[uid] = packed; tx.set(refs[i], fresh); }
+            } else if (packed) tx.update(refs[i], new F.FieldPath('u', uid), packed);
+            else if (had) tx.update(refs[i], new F.FieldPath('u', uid), F.deleteField());
+          });
+        });
+      }
+    };
+  }
+
+  function demoStore() {
+    var ME = 'you';
+    var t = istToday(), now = Date.now();
+    var days = {};
+    function put(offset, uid, rid, ride, joins) {
+      var d = addDays(t, offset);
+      days[d] = days[d] || { u: {} };
+      days[d].u[uid] = days[d].u[uid] || {};
+      days[d].u[uid].rides = days[d].u[uid].rides || {};
+      days[d].u[uid].rides[rid] = ride;
+      (joins || []).forEach(function (j) {
+        days[d].u[j.uid] = days[d].u[j.uid] || {};
+        days[d].u[j.uid].joins = days[d].u[j.uid].joins || {};
+        days[d].u[j.uid].joins[uid + '__' + rid] = { seats: j.seats, at: now - 3600000, name: j.name, phone: j.phone };
+      });
+    }
+    put(1, 'demo-riya', 'r1', { from: HOME, to: 'Jaipur Airport', slot: 's05', time: '06:30', seats: 3, name: 'Riya (sample)', phone: '9000000001', note: 'Flight at 9:10, one cabin bag each', veh: 'sedan', why: 'flight', createdAt: now - 2 * 3600000 },
+      [{ uid: 'demo-aman', seats: 1, name: 'Aman (sample)', phone: '9000000002' }]);
+    put(1, 'demo-kabir', 'r1', { from: HOME, to: 'Jaipur Junction railway station', slot: 's08', time: '', seats: 2, name: 'Kabir (sample)', phone: '9000000003', note: '', veh: 'mini', why: 'home', createdAt: now - 26 * 3600000 });
+    put(1, 'demo-sneha', 'r1', { from: HOME, to: 'Sindhi Camp bus stand', slot: 's17', time: '17:15', seats: 2, name: 'Sneha (sample)', phone: '9000000004', note: 'Bus to Delhi at 7 PM', veh: 'auto', why: 'home', createdAt: now - 40 * 60000 });
+    put(2, 'demo-arjun', 'r1', { from: HOME, to: 'Jaipur Airport', slot: 's11', time: '12:00', seats: 1, name: 'Arjun (sample)', phone: '9000000005', note: '', veh: 'tbd', why: 'work', createdAt: now - 5 * 3600000 },
+      [{ uid: 'demo-isha', seats: 1, name: 'Isha (sample)', phone: '9000000006' }]);
+    put(3, 'demo-meera', 'r1', { from: 'Jaipur Airport', to: HOME, slot: 's22', time: '22:30', seats: 4, name: 'Meera (sample)', phone: '9000000007', note: 'Landing 10:05 PM', veh: 'suv', why: 'back', createdAt: now - 3 * 86400000 });
+    put(5, 'demo-dev', 'r1', { from: HOME, to: 'Gandhinagar railway station', slot: 's02', time: '04:15', seats: 5, name: 'Dev (sample)', phone: '9000000008', note: 'Whole group going for the exam', veh: 'van', why: 'exam', createdAt: now - 9 * 3600000 });
+
+    var listeners = [];
+    function emit() {
+      var m = new Map();
+      Object.keys(days).forEach(function (d) { m.set(d, clone(days[d])); });
+      listeners.forEach(function (l) { l(m, false); });
+    }
+    return {
+      onAuth: function (cb) { setTimeout(function () { cb({ uid: ME, name: '', email: '' }); }, 0); },
+      signIn: function () { return Promise.resolve(); },
+      signOut: function () { return Promise.resolve(); },
+      subscribe: function (fromDay, toDay, onData) { listeners.push(onData); setTimeout(emit, 0); return function () {}; },
+      mutate: function (dates, fn) {
+        return Promise.resolve().then(function () {
+          var mine = {}, snap = {};
+          dates.forEach(function (d) {
+            snap[d] = days[d] ? clone(days[d]) : null;
+            mine[d] = normEntry(snap[d] && snap[d].u[ME] ? clone(snap[d].u[ME]) : null);
+          });
+          fn(mine, snap);
+          dates.forEach(function (d) {
+            var packed = packEntry(mine[d]);
+            if (!days[d]) { if (packed) { days[d] = { u: {} }; days[d].u[ME] = packed; } }
+            else if (packed) days[d].u[ME] = packed;
+            else delete days[d].u[ME];
+          });
+          emit();
+        });
+      }
+    };
+  }
+
+  /* ---------- writing ---------- */
+  function userError(message) { var e = new Error(message); e.code = 'user_message'; return e; }
+  async function runWrite(fn) {
+    try { await fn(); return true; }
+    catch (e) {
+      var code = e && e.code;
+      if (code === 'user_message') toast(e.message);
+      else if (code === 'permission-denied') toast('Not saved. The database refused this. Sign out, sign in with your @' + COLLEGE_EMAIL_DOMAIN + ' account and try again.');
+      else if (code === 'resource-exhausted') toast('Not saved. The site has hit its free daily limit. Try again later today.');
+      else if (code === 'aborted' || code === 'failed-precondition') toast('Lots of people are updating this day right now. Try again.');
+      else toast('Not saved. Check your internet connection and try again.');
+      return false;
+    }
+  }
+  function guard() {
+    if (S.phase !== 'board' || !S.uid) { toast('Sign in first.'); return false; }
+    if (S.dead) { toast(S.dead); return false; }
+    return true;
+  }
+
+  /* ---------- toast and choices ---------- */
+  var toastTimer = null;
+  function toast(msg) {
+    var t = $('toast');
+    t.textContent = msg;
+    t.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.hidden = true; }, 5200);
+  }
+  var choiceResolve = null;
+  // buttons: [{ label, value, kind }]; resolves the chosen value, or '' when dismissed.
+  function askChoice(opts) {
+    $('c-title').textContent = opts.title;
+    $('c-body').textContent = opts.body;
+    var dlg = $('dlg-confirm');
+    setKids($('c-actions'), opts.buttons.map(function (b, i) {
+      return h('button', { type: 'button', class: 'btn' + (b.kind ? ' ' + b.kind : ''), id: 'c-btn-' + i, text: b.label, onclick: function () { dlg.close(b.value); } });
+    }));
+    return new Promise(function (resolve) {
+      choiceResolve = resolve;
+      dlg.returnValue = '';
+      dlg.showModal();
+      $('c-btn-0').focus();
+    });
+  }
+  $('dlg-confirm').addEventListener('close', function () {
+    var r = choiceResolve; choiceResolve = null;
+    if (r) r($('dlg-confirm').returnValue || '');
+  });
+
+  /* ---------- WhatsApp, call, copy, share ---------- */
+  function waLink(phone, text) { return 'https://wa.me/91' + phone + '?text=' + encodeURIComponent(text); }
+  function sampleOnly(ev) { ev.preventDefault(); toast('Sample ride. On the live site this opens a WhatsApp chat with the student.'); }
+  function contactRow(name, phone, ride, fidBase, isSample) {
+    var msg = 'Hi ' + firstName(name) + ', I saw your cab share on LNMIIT Cab Share: ' + ride.from + ' to ' + ride.to + ', ' + whenText(ride) + '. Is a seat still free?';
+    if (isSample) {
+      return [
+        h('span', { class: 'phone', text: 'Sample number' }),
+        h('button', { type: 'button', class: 'btn small wa', fid: fidBase + '-wa', text: 'Message on WhatsApp', onclick: sampleOnly })
+      ];
+    }
+    return [
+      h('a', { class: 'btn small wa', href: waLink(phone, msg), target: '_blank', rel: 'noopener noreferrer', 'data-fid': fidBase + '-wa', text: 'Message on WhatsApp' }),
+      h('a', { class: 'phone', href: 'tel:+91' + phone, text: fmtPhone(phone), 'aria-label': 'Call ' + name + ' on ' + fmtPhone(phone) }),
+      h('button', {
+        type: 'button', class: 'btn small', fid: fidBase + '-copy', text: 'Copy',
+        'aria-label': 'Copy ' + name + '’s number',
+        onclick: function () {
+          var done = function () { toast('Number copied: ' + fmtPhone(phone)); };
+          var failed = function () { toast('Could not copy. The number is ' + fmtPhone(phone)); };
+          try { navigator.clipboard.writeText(phone).then(done, failed); } catch (e) { failed(); }
+        }
+      })
+    ];
+  }
+  function shareLink(r) {
+    var text = 'Cab share: ' + r.from + ' → ' + r.to + ', ' + whenText(r) + '. ' +
+      (r.left > 0 ? seatWord(r.left) + ' left' : 'Full right now') + '. Posted by ' + firstName(r.name) + ' on LNMIIT Cab Share.';
+    if (S.mode === 'live') text += ' ' + location.origin + location.pathname;
+    return 'https://wa.me/?text=' + encodeURIComponent(text);
+  }
+
+  /* ---------- ride card ---------- */
+  function rideCard(r, showDate, flags) {
+    var slot = SLOT_BY_ID[r.slot];
+    var tm = r.time ? fmt12(r.time) : { main: slot.short, ap: slot.ap };
+    var isSample = S.mode === 'demo' && !r.mine;
+
+    var stub = h('div', { class: 'stub' },
+      showDate ? h('span', { class: 'stub-date', text: fmtDate(r.date) }) : null,
+      h('span', { class: 'stub-time', text: tm.main }),
+      h('span', { class: 'stub-ap', text: tm.ap }),
+      r.time ? null : h('span', { class: 'stub-flex', text: 'flexible' })
+    );
+
+    var seatIcons = h('span', { class: 'seats', 'aria-hidden': 'true' });
+    for (var i = 0; i < r.seats; i++) seatIcons.append(h('span', { class: 'seat' + (i < r.used ? ' taken' : '') }));
+    var bump = flags && flags.bumped[r.key] ? ' bump' : '';
+    var pill = r.left >= 2 ? h('span', { class: 'pill ok' + bump, text: r.left + ' seats left' })
+      : r.left === 1 ? h('span', { class: 'pill warn' + bump, text: 'Last seat' })
+      : h('span', { class: 'pill full' + bump, text: 'Full' });
+
+    var tags = [];
+    if (r.veh) tags.push(h('span', { class: 'tagc', text: VEH_BY_ID[r.veh].icon + ' ' + VEH_BY_ID[r.veh].label }));
+    if (r.why) tags.push(h('span', { class: 'tagc', text: WHY_BY_ID[r.why].icon + ' ' + WHY_BY_ID[r.why].label }));
+
+    var body = h('div', { class: 'body' },
+      h('h4', { class: 'route' }, r.from, h('span', { class: 'arrow', 'aria-hidden': 'true', text: '→' }), h('span', { class: 'vh', text: ' to ' }), r.to),
+      h('p', { class: 'by' },
+        h('span', { class: 'avatar', 'aria-hidden': 'true', style: 'background:' + AVATAR_COLORS[hashCode(r.owner) % AVATAR_COLORS.length], text: (r.name.charAt(0) || '?').toUpperCase() }),
+        r.mine ? h('span', { class: 'badge', text: 'Your post' }) : h('span', { class: 'who', text: r.name }),
+        r.createdAt ? h('span', { text: 'posted ' + ago(r.createdAt) }) : null,
+        r.myJoin && !r.myJoin.standby ? h('span', { class: 'badge in', text: 'You are in · ' + seatWord(r.myJoin.seats) }) : null,
+        r.myJoin && r.myJoin.standby ? h('span', { class: 'badge wait', text: 'On standby' }) : null
+      ),
+      tags.length ? h('div', { class: 'tags' }, tags) : null,
+      r.note ? h('p', { class: 'note', text: r.note }) : null,
+      h('div', { class: 'seatline' }, r.seats > 0 ? seatIcons : null, pill,
+        r.used > 0 ? h('span', { class: 'joined-n', text: seatWord(r.used) + ' taken here' }) : null)
+    );
+
+    if (r.myJoin && r.myJoin.standby) {
+      body.append(h('p', { class: 'note', text: 'The ride filled up just before your seat was saved. You get a seat if one opens up, or you can leave.' }));
+    }
+    if (!r.mine) body.append(h('div', { class: 'contact' }, contactRow(r.name, r.phone, r, 'c-' + r.key, isSample)));
+
+    var actions = h('div', { class: 'actions' });
+    if (r.mine) {
+      actions.append(
+        h('span', { class: 'stepper' }, 'Seats left',
+          h('button', { type: 'button', class: 'btn small', fid: 'minus-' + r.key, 'aria-label': 'One seat fewer', disabled: r.left <= 0, text: '−', onclick: function () { bumpSeats(r, -1); } }),
+          h('span', { class: 'val', text: String(r.left) }),
+          h('button', { type: 'button', class: 'btn small', fid: 'plus-' + r.key, 'aria-label': 'One seat more', disabled: r.seats >= MAX_TOTAL_SEATS, text: '+', onclick: function () { bumpSeats(r, 1); } })
+        ),
+        h('button', { type: 'button', class: 'btn small', fid: 'edit-' + r.key, text: 'Edit', onclick: function () { openPost(r); } }),
+        h('button', { type: 'button', class: 'btn small danger', fid: 'rm-' + r.key, text: 'Remove post', onclick: function () { removeRide(r); } })
+      );
+    } else if (r.myJoin) {
+      actions.append(h('button', { type: 'button', class: 'btn small danger', fid: 'leave-' + r.key, text: 'Leave this ride', onclick: function () { leaveRide(r); } }));
+    } else if (r.left > 0) {
+      actions.append(h('button', { type: 'button', class: 'btn primary', fid: 'join-' + r.key, text: 'Take a seat', onclick: function () { openJoin(r); } }));
+    }
+    actions.append(h('a', { class: 'btn small quiet', href: shareLink(r), target: '_blank', rel: 'noopener noreferrer', 'data-fid': 'share-' + r.key, text: 'Share to a group' }));
+    body.append(actions);
+
+    if (r.mine) {
+      var box = h('div', { class: 'joiners' }, h('h4', { text: 'Joined on this site' }));
+      if (!r.joins.length) box.append(h('p', { text: 'Nobody yet. If someone messages you and you agree, lower "Seats left" yourself.' }));
+      else {
+        var ul = h('ul');
+        r.joins.forEach(function (j) {
+          ul.append(h('li', null,
+            h('strong', { text: j.name }),
+            h('span', { text: seatWord(j.seats) }),
+            j.standby ? h('span', { class: 'badge wait', text: 'Standby' }) : null,
+            contactRow(j.name, j.phone, r, 'jc-' + r.key + '-' + j.uid, S.mode === 'demo')
+          ));
+        });
+        box.append(ul);
+      }
+      body.append(box);
+    }
+    return h('article', { class: 'ride' + (r.mine ? ' is-mine' : '') + (flags && flags.fresh[r.key] ? ' fresh' : '') }, stub, body);
+  }
+
+  /* ---------- filters ---------- */
+  function passes(r, skip) {
+    if (skip !== 'date' && S.fDate !== 'all' && r.date !== S.fDate) return false;
+    if (skip !== 'slot' && S.fSlot !== 'all' && r.slot !== S.fSlot) return false;
+    if (S.fDir === 'from' && !isHome(r.from)) return false;
+    if (S.fDir === 'to' && !isHome(r.to)) return false;
+    if (skip !== 'place' && S.fPlace !== 'any' && r.from !== S.fPlace && r.to !== S.fPlace) return false;
+    if (S.fOpen && r.left <= 0) return false;
+    return true;
+  }
+  function filtersActive() { return S.fDate !== 'all' || S.fSlot !== 'all' || S.fDir !== 'any' || S.fPlace !== 'any' || S.fOpen; }
+  function clearFilters() { S.fDate = 'all'; S.fSlot = 'all'; S.fDir = 'any'; S.fPlace = 'any'; S.fOpen = false; render(); }
+
+  function chip(fid, pressed, label, small, n, onclick) {
+    return h('button', { type: 'button', class: 'chip' + (n === 0 && !pressed ? ' zero' : ''), fid: fid, 'aria-pressed': pressed ? 'true' : 'false', onclick: onclick },
+      label, small ? h('small', { text: small }) : null, h('span', { class: 'n', text: String(n) }), h('span', { class: 'vh', text: n === 1 ? ' ride' : ' rides' }));
+  }
+  function renderFilters(rides) {
+    var today = istToday();
+
+    // place tiles
+    var forPlace = rides.filter(function (r) { return passes(r, 'place'); });
+    var names = PLACES.filter(function (p) { return p.name !== HOME; }).map(function (p) { return p.name; });
+    var extra = {};
+    rides.forEach(function (r) { [r.from, r.to].forEach(function (p) { if (!isHome(p) && names.indexOf(p) < 0) extra[p] = true; }); });
+    if (S.fPlace !== 'any' && names.indexOf(S.fPlace) < 0) extra[S.fPlace] = true;
+    names = names.concat(Object.keys(extra).sort());
+    setKids($('tiles'), names.map(function (name) {
+      var n = forPlace.filter(function (r) { return r.from === name || r.to === name; }).length;
+      var on = S.fPlace === name;
+      return h('button', { type: 'button', class: 'tile' + (n ? ' has' : ''), fid: 'place-' + name, 'aria-pressed': on ? 'true' : 'false', onclick: function () { S.fPlace = on ? 'any' : name; render(); } },
+        h('span', { class: 'ic', 'aria-hidden': 'true', text: placeIcon(name) }),
+        h('span', { class: 'nm', text: name }),
+        h('span', { class: 'ct', text: n ? plural(n, 'ride', 'rides') : 'No rides yet' }));
+    }));
+
+    // direction
+    Array.prototype.forEach.call($('dir-seg').children, function (b) { b.setAttribute('aria-pressed', b.dataset.dir === S.fDir ? 'true' : 'false'); });
+    $('f-open').checked = S.fOpen;
+
+    // dates
+    var dates = [];
+    for (var i = 0; i < 7; i++) dates.push(addDays(today, i));
+    var far = {};
+    rides.forEach(function (r) { if (dates.indexOf(r.date) < 0) far[r.date] = true; });
+    if (S.fDate !== 'all' && dates.indexOf(S.fDate) < 0) far[S.fDate] = true;
+    dates = dates.concat(Object.keys(far).sort());
+    var forDate = rides.filter(function (r) { return passes(r, 'date'); });
+    var kids = [chip('d-all', S.fDate === 'all', 'All upcoming', '', forDate.length, function () { S.fDate = 'all'; render(); })];
+    dates.forEach(function (d) {
+      var n = forDate.filter(function (r) { return r.date === d; }).length;
+      var rel = relDate(d);
+      kids.push(chip('d-' + d, S.fDate === d, rel || fmtDate(d), rel ? fmtDate(d) : '', n, function () { S.fDate = d; render(); }));
+    });
+    setKids($('date-chips'), kids);
+    var pick = $('f-date-pick');
+    pick.min = today;
+    if (document.activeElement !== pick) pick.value = S.fDate !== 'all' ? S.fDate : '';
+
+    // slots
+    var forSlot = rides.filter(function (r) { return passes(r, 'slot'); });
+    var skids = [chip('s-all', S.fSlot === 'all', 'Any time', '', forSlot.length, function () { S.fSlot = 'all'; render(); })];
+    SLOTS.forEach(function (s) {
+      var n = forSlot.filter(function (r) { return r.slot === s.id; }).length;
+      skids.push(chip('s-' + s.id, S.fSlot === s.id, s.label, s.range, n, function () { S.fSlot = s.id; render(); }));
+    });
+    setKids($('slot-chips'), skids);
+  }
+
+  /* ---------- views ---------- */
+  function renderBoard(rides, flags) {
+    var list = $('list'), summary = $('summary');
+    if (!S.loaded) {
+      setKids(summary, null);
+      setKids(list, h('p', { class: 'loading', text: 'Loading rides…' }));
+      return;
+    }
+    var shown = rides.filter(function (r) { return passes(r); });
+    var seatsOpen = shown.reduce(function (a, r) { return a + r.left; }, 0);
+    setKids(summary, [
+      h('span', null, h('strong', { text: plural(shown.length, 'ride', 'rides') }), ' · ', h('strong', { text: seatWord(seatsOpen) }), ' open'),
+      filtersActive() ? h('button', { type: 'button', class: 'btn small quiet', fid: 'clear-filters', text: 'Clear filters', onclick: clearFilters }) : null
+    ]);
+
+    if (!rides.length) {
+      setKids(list, h('div', { class: 'empty' },
+        h('h2', { text: 'No rides posted yet' }),
+        h('p', { text: 'Be the first. Post where you are going and batchmates on the same route can share your cab.' }),
+        h('div', { class: 'actions' }, h('button', { type: 'button', class: 'btn primary', fid: 'empty-post', text: '+ Post a ride', onclick: function () { openPost(null); } }))
+      ));
+      return;
+    }
+    if (!shown.length) {
+      setKids(list, h('div', { class: 'empty' },
+        h('h2', { text: 'Nobody has posted this yet' }),
+        h('p', { text: 'No ride matches the place, date and slot you picked. Post yours and others on the same route will find it here.' }),
+        h('div', { class: 'actions' },
+          h('button', { type: 'button', class: 'btn primary', fid: 'empty-post', text: '+ Post this ride', onclick: function () { openPost(null); } }),
+          h('button', { type: 'button', class: 'btn', fid: 'empty-clear', text: 'Show all rides', onclick: clearFilters }))
+      ));
+      return;
+    }
+
+    var out = [];
+    var day = null, cards = null, lastDate = '', lastSlot = '';
+    shown.forEach(function (r) {
+      if (r.date !== lastDate) {
+        var n = shown.filter(function (x) { return x.date === r.date; }).length;
+        var rel = relDate(r.date);
+        day = h('section', { class: 'day' },
+          h('h2', { class: 'dayhead' }, h('span', { class: 'd', text: fmtDate(r.date) }), rel ? h('span', { class: 'rel', text: rel }) : null, h('span', { class: 'n', text: plural(n, 'ride', 'rides') })));
+        out.push(day);
+        lastDate = r.date; lastSlot = '';
+      }
+      if (r.slot !== lastSlot) {
+        var s = SLOT_BY_ID[r.slot];
+        day.append(h('h3', { class: 'slothead' }, s.label, h('span', { text: s.range })));
+        cards = h('div', { class: 'cards' });
+        day.append(cards);
+        lastSlot = r.slot;
+      }
+      cards.append(rideCard(r, false, flags));
+    });
+    setKids(list, out);
+  }
+  function renderMine(rides, flags) {
+    var box = $('mine');
+    if (!S.loaded) { setKids(box, h('p', { class: 'loading', text: 'Loading rides…' })); return; }
+    var posted = rides.filter(function (r) { return r.mine; });
+    var joined = rides.filter(function (r) { return r.myJoin; });
+    var kids = [h('h2', { class: 'section-title', text: 'Rides you posted' })];
+    if (posted.length) kids.push(h('div', { class: 'cards', style: 'margin-top:12px' }, posted.map(function (r) { return rideCard(r, true, flags); })));
+    else kids.push(h('p', { class: 'section-empty' }, 'You have no active posts. ', h('button', { type: 'button', class: 'btn small', fid: 'mine-post', text: '+ Post a ride', onclick: function () { openPost(null); } })));
+    kids.push(h('h2', { class: 'section-title', text: 'Rides you joined' }));
+    if (joined.length) kids.push(h('div', { class: 'cards', style: 'margin-top:12px' }, joined.map(function (r) { return rideCard(r, true, flags); })));
+    else kids.push(h('p', { class: 'section-empty' }, 'You have not taken a seat in any ride. ', h('a', { href: '#rides', text: 'Browse all rides' })));
+    setKids(box, kids);
+  }
+
+  var renderQueued = false;
+  function render() {
+    if (renderQueued) return;
+    renderQueued = true;
+    Promise.resolve().then(function () { renderQueued = false; renderNow(); });
+  }
+  function renderNow() {
+    var active = document.activeElement;
+    var fid = active && active.dataset ? active.dataset.fid : '';
+    if (S.fDate !== 'all' && S.fDate < istToday()) S.fDate = 'all';
+
+    $('boot').hidden = S.phase !== 'boot';
+    $('landing').hidden = S.phase !== 'signedout';
+    $('app').hidden = S.phase !== 'board';
+    $('preview').hidden = !(S.mode === 'demo' && S.phase === 'board');
+    $('acct').hidden = !(S.mode === 'live' && S.phase === 'board');
+    if (S.user) $('acct-name').textContent = S.user.email || S.user.name;
+
+    var notice = '';
+    if (S.phase === 'error') notice = S.bootError;
+    else if (S.phase === 'board' && S.dead) notice = S.dead;
+    else if (S.phase === 'board' && S.slow) notice = 'Still trying to reach the ride list. Check your internet connection.';
+    $('notice').textContent = notice;
+    $('notice').hidden = !notice;
+
+    if (S.phase === 'signedout') {
+      $('signin-err').textContent = S.authMsg;
+      $('signin-err').hidden = !S.authMsg;
+      $('signin-fine').textContent = 'Only @' + COLLEGE_EMAIL_DOMAIN + ' accounts can see rides and phone numbers.' +
+        (/Instagram|FBAN|FBAV|Line\/|; wv\)/.test(navigator.userAgent) ? ' If sign-in does not open here, open this page in Chrome or Safari.' : '');
+    }
+    updateFab();
+    if (S.phase !== 'board') return;
+
+    var rides = computeRides();
+    var flags = { fresh: {}, bumped: {} };
+    rides.forEach(function (r) {
+      if (S.seen && !S.seen[r.key]) flags.fresh[r.key] = true;
+      if (S.lastLeft[r.key] != null && S.lastLeft[r.key] !== r.left) flags.bumped[r.key] = true;
+    });
+    if (S.loaded) {
+      S.seen = {}; S.lastLeft = {};
+      rides.forEach(function (r) { S.seen[r.key] = true; S.lastLeft[r.key] = r.left; });
+    }
+
+    var nm = firstName(loadProfile().name || (S.user && S.user.name) || '');
+    $('hello-title').textContent = nm ? 'Hi ' + nm + ', where are you headed?' : 'Where are you headed?';
+    $('view-rides').hidden = S.view !== 'rides';
+    $('view-mine').hidden = S.view !== 'mine';
+    if (S.view === 'rides') $('tab-rides').setAttribute('aria-current', 'page'); else $('tab-rides').removeAttribute('aria-current');
+    if (S.view === 'mine') $('tab-mine').setAttribute('aria-current', 'page'); else $('tab-mine').removeAttribute('aria-current');
+    var mineN = rides.filter(function (r) { return r.mine || r.myJoin; }).length;
+    $('mine-count').textContent = String(mineN);
+    $('mine-count').hidden = mineN === 0;
+
+    renderFilters(rides);
+    renderBoard(rides, flags);
+    renderMine(rides, flags);
+
+    if (fid && !document.querySelector('dialog[open]')) {
+      var again = document.querySelector('[data-fid="' + (window.CSS && CSS.escape ? CSS.escape(fid) : fid) + '"]');
+      if (again && again !== document.activeElement && !again.disabled) again.focus({ preventScroll: true });
+    }
+  }
+
+  /* ---------- post / edit dialog ---------- */
+  function fillPlaceSelect(sel) {
+    PLACES.forEach(function (p) { sel.append(h('option', { value: p.name, text: p.icon + '  ' + p.name })); });
+    sel.append(h('option', { value: OTHER, text: '📍  Somewhere else…' }));
+  }
+  function isPreset(name) { return Object.prototype.hasOwnProperty.call(PLACE_ICON, name); }
+  function syncOther(prefix) { $(prefix + '-other-wrap').hidden = $(prefix + '-sel').value !== OTHER; }
+  function getPlace(prefix) {
+    var sel = $(prefix + '-sel');
+    return sel.value === OTHER ? cleanStr($(prefix + '-other').value, 40) : sel.value;
+  }
+  function setPlace(prefix, val) {
+    var sel = $(prefix + '-sel');
+    if (isPreset(val)) { sel.value = val; $(prefix + '-other').value = ''; }
+    else { sel.value = OTHER; $(prefix + '-other').value = val; }
+    syncOther(prefix);
+  }
+  function getSlot() { var c = document.querySelector('input[name="p-slot"]:checked'); return c ? c.value : ''; }
+  function setSlot(id) { Array.prototype.forEach.call(document.querySelectorAll('input[name="p-slot"]'), function (i) { i.checked = i.value === id; }); }
+  // optional single-choice chips: tap to pick, tap again to clear
+  function buildPick(boxId, items) {
+    var box = $(boxId);
+    items.forEach(function (it) {
+      box.append(h('button', { type: 'button', id: boxId + '-' + it.id, 'data-val': it.id, 'aria-pressed': 'false', text: it.icon + ' ' + it.label,
+        onclick: function () { setPick(boxId, getPick(boxId) === it.id ? '' : it.id); } }));
+    });
+  }
+  function getPick(boxId) { var b = $(boxId).querySelector('[aria-pressed="true"]'); return b ? b.dataset.val : ''; }
+  function setPick(boxId, val) { Array.prototype.forEach.call($(boxId).children, function (b) { b.setAttribute('aria-pressed', b.dataset.val === val ? 'true' : 'false'); }); }
+  function setErr(id, msg) {
+    var e = $(id + '-err');
+    e.textContent = msg || '';
+    e.hidden = !msg;
+    var input = $(id) || $(id + '-sel');
+    if (input && input.classList) input.classList.toggle('bad', !!msg);
+  }
+  function fillSeatSelect(sel, min, max, value) {
+    var opts = [];
+    for (var i = min; i <= max; i++) opts.push(h('option', { value: String(i), text: String(i) }));
+    setKids(sel, opts);
+    sel.value = String(Math.min(Math.max(value, min), max));
+  }
+
+  // While posting: tell the student if batchmates already posted the same route for that day.
+  function updateMatch() {
+    var box = $('p-match');
+    if (S.editing) { box.hidden = true; return; }
+    var from = getPlace('p-from'), to = getPlace('p-to'), date = $('p-date').value;
+    if (!from || !to || !validDate(date)) { box.hidden = true; return; }
+    var same = computeRides().filter(function (r) { return !r.mine && r.date === date && samePlace(r.from, from) && samePlace(r.to, to); });
+    var open = same.filter(function (r) { return r.left > 0; });
+    if (!open.length) { box.hidden = true; return; }
+    var seats = open.reduce(function (a, r) { return a + r.left; }, 0);
+    setKids(box, [
+      h('span', { text: plural(open.length, 'ride is', 'rides are') + ' already going this way on ' + fmtDate(date) + ' with ' + seatWord(seats) + ' free. You could join instead of booking another cab.' }),
+      h('button', { type: 'button', class: 'btn small', id: 'p-match-see', text: 'See ' + (open.length === 1 ? 'that ride' : 'those rides'), onclick: function () {
+        $('dlg-post').close();
+        S.fDate = date; S.fSlot = 'all'; S.fOpen = false; S.fDir = 'any';
+        S.fPlace = isHome(from) ? to : from;
+        if (location.hash === '#mine') location.hash = '#rides';
+        render();
+      } })
+    ]);
+    box.hidden = false;
+  }
+
+  function openPost(ride) {
+    if (!guard()) return;
+    S.editing = ride ? { rid: ride.rid, key: ride.key, date: ride.date, hasJoins: ride.joins.length > 0 } : null;
+    ['p-from', 'p-to', 'p-date', 'p-slot', 'p-name', 'p-phone'].forEach(function (id) { setErr(id, ''); });
+    var today = istToday(), prof = loadProfile();
+    $('p-date').min = today;
+    $('p-date').max = addDays(today, MAX_DAYS_AHEAD);
+    $('p-date').disabled = false;
+    $('p-date-hint').hidden = true;
+    if (ride) {
+      $('post-title').textContent = 'Edit your ride';
+      $('post-sub').textContent = ride.joins.length
+        ? plural(ride.joins.length, 'person has', 'people have') + ' already joined. If you change the time, tell them.'
+        : 'Change any detail. The post updates for everyone straight away.';
+      $('p-submit').textContent = 'Save changes';
+      setPlace('p-from', ride.from); setPlace('p-to', ride.to);
+      $('p-date').value = ride.date; $('p-time').value = ride.time; setSlot(ride.slot);
+      if (ride.joins.length) {
+        $('p-date').disabled = true;
+        $('p-date-hint').textContent = 'The date is locked because people have joined. To move it, remove this post and make a new one.';
+        $('p-date-hint').hidden = false;
+      }
+      $('p-seats-lbl').textContent = 'Seats still free';
+      $('p-seats-hint').textContent = ride.used ? seatWord(ride.used) + ' already taken on this site ' + (ride.used === 1 ? 'is' : 'are') + ' kept.' : 'Set to 0 to show the ride as full.';
+      fillSeatSelect($('p-seats'), 0, MAX_TOTAL_SEATS - ride.used, ride.left);
+      setPick('p-veh', ride.veh); setPick('p-why', ride.why);
+      $('p-name').value = ride.name; $('p-phone').value = ride.phone; $('p-note').value = ride.note;
+    } else {
+      $('post-title').textContent = 'Post a ride';
+      $('post-sub').textContent = 'Tell batchmates where you are going. They will message you to share the cab.';
+      $('p-submit').textContent = 'Post ride';
+      var toDefault = S.fPlace !== 'any' ? S.fPlace : 'Jaipur Airport';
+      if (S.fDir === 'to') { setPlace('p-from', toDefault); setPlace('p-to', HOME); }
+      else { setPlace('p-from', HOME); setPlace('p-to', toDefault); }
+      $('p-date').value = S.fDate !== 'all' ? S.fDate : today;
+      $('p-time').value = ''; setSlot(S.fSlot !== 'all' ? S.fSlot : '');
+      $('p-seats-lbl').textContent = 'Seats you can share';
+      $('p-seats-hint').textContent = 'How many more people can fit, not counting you.';
+      fillSeatSelect($('p-seats'), 1, MAX_NEW_SEATS, 3);
+      setPick('p-veh', ''); setPick('p-why', '');
+      $('p-name').value = prof.name || (S.user && cleanStr(S.user.name, 40)) || '';
+      $('p-phone').value = prof.phone || '';
+      $('p-note').value = '';
+    }
+    $('p-submit').disabled = false;
+    updateMatch();
+    $('dlg-post').showModal();
+    $('p-from-sel').focus();
+  }
+
+  async function submitPost(ev) {
+    ev.preventDefault();
+    if ($('p-submit').disabled) return;
+    var editing = S.editing;
+    var from = getPlace('p-from'), to = getPlace('p-to');
+    var date = editing && editing.hasJoins ? editing.date : $('p-date').value;
+    var time = $('p-time').value, slotId = getSlot();
+    var name = cleanStr($('p-name').value, 40), phone = normPhone($('p-phone').value);
+    var note = cleanStr($('p-note').value, 140);
+    var veh = getPick('p-veh'), why = getPick('p-why');
+    var seatsField = Number($('p-seats').value);
+    var today = istToday();
+    var firstBad = null;
+    function bad(id, msg, focusId) { setErr(id, msg); if (msg && !firstBad) firstBad = focusId || id; }
+
+    bad('p-from', from ? '' : 'Enter where the cab starts.', $('p-from-sel').value === OTHER ? 'p-from-other' : 'p-from-sel');
+    bad('p-to', !to ? 'Enter where the cab is going.' : (from && samePlace(from, to) ? 'From and To are the same place.' : ''), $('p-to-sel').value === OTHER ? 'p-to-other' : 'p-to-sel');
+    var dateMsg = '';
+    if (!validDate(date)) dateMsg = 'Pick the travel date.';
+    else if (date < today) dateMsg = 'That date has passed.';
+    else if (date > addDays(today, MAX_DAYS_AHEAD)) dateMsg = 'Pick a date within the next ' + MAX_DAYS_AHEAD + ' days.';
+    bad('p-date', dateMsg);
+    if (time && !validTime(time)) time = '';
+    if (time) { var st = slotForTime(time); if (st) { slotId = st.id; setSlot(slotId); } }
+    var slotMsg = '';
+    if (!SLOT_BY_ID[slotId]) slotMsg = 'Pick a time slot.';
+    else if (!dateMsg && rideExpiry(date, slotId, time) <= Date.now()) slotMsg = 'That time has already passed today. Pick a later slot or date.';
+    bad('p-slot', slotMsg, 'p-slot-' + (slotId || SLOTS[0].id));
+    bad('p-name', name ? '' : 'Enter your name.');
+    bad('p-phone', phone ? '' : 'Enter a 10-digit Indian mobile number.');
+    if (firstBad) { var el = $(firstBad); if (el) el.focus(); return; }
+    if (!guard()) return;
+
+    // Duplicate check: the same student posting the same route for the same day again.
+    var myOthers = computeRides().filter(function (r) { return r.mine && (!editing || r.key !== editing.key); });
+    var dup = myOthers.filter(function (r) { return r.date === date && samePlace(r.from, from) && samePlace(r.to, to); })[0];
+    if (dup) {
+      var choice = await askChoice({
+        title: 'You already posted this trip',
+        body: 'You have a post for ' + dup.from + ' → ' + dup.to + ' on ' + whenText(dup) + ' (' + (dup.left > 0 ? seatWord(dup.left) + ' left' : 'full') + '). ' +
+          (editing ? 'Saving this will show the same trip twice.' : 'Posting again will show the same trip twice.'),
+        buttons: [
+          { label: 'Go back', value: '' },
+          { label: 'Open my existing post', value: 'edit' },
+          { label: editing ? 'Save anyway' : 'Post anyway', value: 'go', kind: 'danger' }
+        ]
+      });
+      if (choice === 'edit') { $('dlg-post').close(); openPost(dup); return; }
+      if (choice !== 'go') return;
+    }
+    if (!editing && myOthers.length >= MAX_ACTIVE_POSTS) { toast('You already have ' + MAX_ACTIVE_POSTS + ' active posts. Remove one first.'); return; }
+
+    $('p-submit').disabled = true;
+    var now = Date.now();
+    var fields = { from: from, to: to, slot: slotId, time: time, name: name, phone: phone, note: note, veh: veh, why: why };
+    var ok;
+    if (editing) {
+      var oldDate = editing.date;
+      var dates = oldDate === date ? [date] : [oldDate, date];
+      ok = await runWrite(function () {
+        return store.mutate(dates, function (mine, days) {
+          var cur = mine[oldDate].rides[editing.rid];
+          if (!isObj(cur)) throw userError('This post no longer exists.');
+          var joins = joinsInDay(days[oldDate], editing.key, S.uid);
+          if (oldDate !== date && joins.length) throw userError('Someone just joined this ride, so its date cannot change now.');
+          var used = allocate(joins, Number.isInteger(cur.seats) ? cur.seats : 0);
+          var next = Object.assign({}, fields, {
+            seats: Math.min(MAX_TOTAL_SEATS, used + seatsField),
+            createdAt: typeof cur.createdAt === 'number' ? cur.createdAt : now, updatedAt: now
+          });
+          delete mine[oldDate].rides[editing.rid];
+          mine[date].rides[editing.rid] = next;
+        });
+      });
+    } else {
+      var rid = 'r' + now.toString(36) + Math.random().toString(36).slice(2, 8);
+      ok = await runWrite(function () {
+        return store.mutate([date], function (mine) {
+          mine[date].rides[rid] = Object.assign({}, fields, { seats: seatsField, createdAt: now, updatedAt: now });
+        });
+      });
+    }
+    $('p-submit').disabled = false;
+    if (!ok) return;
+    saveProfile(name, phone);
+    $('dlg-post').close();
+    if (!editing) {
+      // make sure the new post is visible under the current filters
+      if (S.fDate !== 'all' && S.fDate !== date) S.fDate = date;
+      if (S.fSlot !== 'all' && S.fSlot !== slotId) S.fSlot = 'all';
+      if (S.fPlace !== 'any' && S.fPlace !== from && S.fPlace !== to) S.fPlace = 'any';
+      if ((S.fDir === 'from' && !isHome(from)) || (S.fDir === 'to' && !isHome(to))) S.fDir = 'any';
+    }
+    toast(editing ? 'Ride updated.' : 'Ride posted. Batchmates can now see it and message you.');
+    render();
+  }
+
+  /* ---------- seat actions ---------- */
+  function bumpSeats(r, delta) {
+    if (!guard()) return;
+    runWrite(function () {
+      return store.mutate([r.date], function (mine, days) {
+        var cur = mine[r.date].rides[r.rid];
+        if (!isObj(cur) || !Number.isInteger(cur.seats)) throw userError('This post no longer exists.');
+        var used = allocate(joinsInDay(days[r.date], r.key, S.uid), cur.seats);
+        cur.seats = Math.max(used, Math.min(MAX_TOTAL_SEATS, cur.seats + delta));
+        cur.updatedAt = Date.now();
+      });
+    });
+  }
+  async function removeRide(r) {
+    if (!guard()) return;
+    var yes = await askChoice({
+      title: 'Remove this post?',
+      body: r.from + ' → ' + r.to + ', ' + whenText(r) + '. It disappears for everyone.' + (r.joins.length ? ' ' + plural(r.joins.length, 'person has', 'people have') + ' joined, so let them know.' : ''),
+      buttons: [{ label: 'Keep it', value: '' }, { label: 'Remove post', value: 'yes', kind: 'danger' }]
+    });
+    if (yes !== 'yes') return;
+    var ok = await runWrite(function () { return store.mutate([r.date], function (mine) { delete mine[r.date].rides[r.rid]; }); });
+    if (ok) toast('Post removed.');
+  }
+  async function leaveRide(r) {
+    if (!guard()) return;
+    var yes = await askChoice({
+      title: 'Leave this ride?',
+      body: 'Your ' + (r.myJoin && r.myJoin.seats > 1 ? r.myJoin.seats + ' seats go' : 'seat goes') + ' back to ' + firstName(r.name) + '’s cab. Message them too.',
+      buttons: [{ label: 'Stay', value: '' }, { label: 'Leave ride', value: 'yes', kind: 'danger' }]
+    });
+    if (yes !== 'yes') return;
+    var ok = await runWrite(function () { return store.mutate([r.date], function (mine) { delete mine[r.date].joins[r.key]; }); });
+    if (ok) toast('You left the ride. The seat is free again.');
+  }
+
+  /* ---------- join dialog ---------- */
+  function openJoin(r) {
+    if (!guard()) return;
+    S.joining = { key: r.key, owner: r.owner, rid: r.rid, date: r.date, name: r.name };
+    ['j-name', 'j-phone', 'j-form'].forEach(function (id) { setErr(id, ''); });
+    var prof = loadProfile();
+    $('j-sum').textContent = r.from + ' → ' + r.to + ' · ' + whenText(r);
+    $('j-poster').textContent = firstName(r.name);
+    setKids($('j-contact'), contactRow(r.name, r.phone, r, 'jd', S.mode === 'demo'));
+    fillSeatSelect($('j-seats'), 1, Math.min(r.left, MAX_NEW_SEATS), 1);
+    $('j-name').value = prof.name || (S.user && cleanStr(S.user.name, 40)) || '';
+    $('j-phone').value = prof.phone || '';
+    $('j-submit').disabled = false;
+    $('dlg-join').showModal();
+    $('j-seats').focus();
+  }
+  async function submitJoin(ev) {
+    ev.preventDefault();
+    if ($('j-submit').disabled) return;
+    var name = cleanStr($('j-name').value, 40), phone = normPhone($('j-phone').value);
+    var seats = Number($('j-seats').value);
+    setErr('j-form', '');
+    setErr('j-name', name ? '' : 'Enter your name.');
+    setErr('j-phone', phone ? '' : 'Enter a 10-digit Indian mobile number.');
+    if (!name) { $('j-name').focus(); return; }
+    if (!phone) { $('j-phone').focus(); return; }
+    if (!guard()) return;
+    var J = S.joining;
+    $('j-submit').disabled = true;
+    var outcome = { gone: false, left: -1 };
+    var ok = await runWrite(function () {
+      return store.mutate([J.date], function (mine, days) {
+        // Checked against the freshest copy of the day, inside the same all-or-nothing step as the write.
+        var day = days[J.date];
+        var ownerEntry = day && isObj(day.u) ? day.u[J.owner] : null;
+        var ride = ownerEntry && isObj(ownerEntry.rides) ? parseRide(J.owner, J.rid, ownerEntry.rides[J.rid], J.date) : null;
+        if (!ride) { outcome.gone = true; throw userError('This ride was just removed.'); }
+        var others = joinsInDay(day, J.key, J.owner).filter(function (j) { return j.uid !== S.uid; });
+        var left = ride.seats - allocate(others, ride.seats);
+        if (left < seats) { outcome.left = left; throw userError(left <= 0 ? 'This ride just filled up.' : 'Only ' + seatWord(left) + ' left now. Check the count and try again.'); }
+        mine[J.date].joins[J.key] = { seats: seats, at: Date.now(), name: name, phone: phone };
+      });
+    });
+    $('j-submit').disabled = false;
+    if (!ok) {
+      if (outcome.gone || outcome.left === 0) $('dlg-join').close();
+      else if (outcome.left > 0) fillSeatSelect($('j-seats'), 1, Math.min(outcome.left, MAX_NEW_SEATS), outcome.left);
+      return;
+    }
+    saveProfile(name, phone);
+    $('dlg-join').close();
+    toast('Seat taken. ' + firstName(J.name) + ' can see your name and number.');
+  }
+
+  /* ---------- wiring ---------- */
+  fillPlaceSelect($('p-from-sel'));
+  fillPlaceSelect($('p-to-sel'));
+  SLOTS.forEach(function (s) {
+    $('p-slots').append(h('label', { for: 'p-slot-' + s.id },
+      h('input', { type: 'radio', name: 'p-slot', id: 'p-slot-' + s.id, value: s.id }), s.label, h('small', { text: s.range })));
+  });
+  buildPick('p-veh', VEHICLES);
+  buildPick('p-why', PURPOSES);
+  $('p-slots').addEventListener('change', function () {
+    var t = $('p-time').value, id = getSlot();
+    if (t && validTime(t)) { var st = slotForTime(t); if (!st || st.id !== id) $('p-time').value = ''; }
+    setErr('p-slot', '');
+  });
+  $('p-time').addEventListener('change', function () {
+    var t = $('p-time').value;
+    if (validTime(t)) { var st = slotForTime(t); if (st) { setSlot(st.id); setErr('p-slot', ''); } }
+  });
+  $('p-from-sel').addEventListener('change', function () { syncOther('p-from'); if ($('p-from-sel').value === OTHER) $('p-from-other').focus(); updateMatch(); });
+  $('p-to-sel').addEventListener('change', function () { syncOther('p-to'); if ($('p-to-sel').value === OTHER) $('p-to-other').focus(); updateMatch(); });
+  $('p-from-other').addEventListener('change', updateMatch);
+  $('p-to-other').addEventListener('change', updateMatch);
+  $('p-date').addEventListener('change', updateMatch);
+  $('p-swap').addEventListener('click', function () { var a = getPlace('p-from'), b = getPlace('p-to'); setPlace('p-from', b); setPlace('p-to', a); updateMatch(); });
+  $('p-cancel').addEventListener('click', function () { $('dlg-post').close(); });
+  $('j-cancel').addEventListener('click', function () { $('dlg-join').close(); });
+  $('form-post').addEventListener('submit', submitPost);
+  $('form-join').addEventListener('submit', submitJoin);
+  $('btn-post').addEventListener('click', function () { openPost(null); });
+  $('fab').addEventListener('click', function () { openPost(null); });
+  $('dir-seg').addEventListener('click', function (ev) {
+    var b = ev.target.closest('button');
+    if (b) { S.fDir = b.dataset.dir; render(); }
+  });
+  $('f-open').addEventListener('change', function () { S.fOpen = $('f-open').checked; render(); });
+  $('f-date-pick').addEventListener('change', function () {
+    var v = $('f-date-pick').value;
+    if (validDate(v) && v >= istToday()) { S.fDate = v; render(); }
+    else if (v) { toast('Pick today or a later date.'); $('f-date-pick').value = ''; }
+    else { S.fDate = 'all'; render(); }
+  });
+
+  // floating "Post a ride" button once the main one scrolls out of view
+  var postBtnVisible = true;
+  function updateFab() { $('fab').hidden = S.phase !== 'board' || postBtnVisible; }
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(function (entries) {
+      postBtnVisible = entries[entries.length - 1].isIntersecting;
+      updateFab();
+    }).observe($('btn-post'));
+  }
+
+  function readHash() { S.view = location.hash === '#mine' ? 'mine' : 'rides'; }
+  window.addEventListener('hashchange', function () { readHash(); render(); });
+  setInterval(render, 60000); // drops rides whose time has passed and refreshes "posted … ago"
+
+  /* ---------- sign-in and data ---------- */
+  function signInError(e) {
+    var code = e && e.code;
+    if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request' || code === 'auth/user-cancelled') return '';
+    if (code === 'auth/popup-blocked') return 'Your browser blocked the sign-in window. Allow pop-ups for this site and try again.';
+    if (code === 'auth/network-request-failed') return 'No internet connection. Check it and try again.';
+    if (code === 'auth/unauthorized-domain') return 'This web address is not approved for sign-in yet. Site owner: add it in Firebase under Authentication, Settings, Authorized domains.';
+    if (code === 'auth/operation-not-allowed') return 'Google sign-in is not switched on yet. Site owner: enable Google in Firebase under Authentication, Sign-in method.';
+    return 'Sign-in did not work. Try again, or open this page in Chrome or Safari.';
+  }
+  $('btn-signin').addEventListener('click', async function () {
+    if (!store) return;
+    S.authMsg = '';
+    $('btn-signin').disabled = true;
+    try { await store.signIn(); } catch (e) { S.authMsg = signInError(e); }
+    $('btn-signin').disabled = false;
+    render();
+  });
+  $('btn-signout').addEventListener('click', function () { if (store) store.signOut(); });
+
+  function onAuth(user) {
+    if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+    clearTimeout(slowTimer);
+    S.days = new Map(); S.loaded = false; S.slow = false; S.dead = ''; S.seen = null; S.lastLeft = {};
+    Array.prototype.forEach.call(document.querySelectorAll('dialog[open]'), function (d) { d.close(); });
+    if (!user) { S.user = null; S.uid = null; S.phase = 'signedout'; render(); return; }
+    if (S.mode === 'live' && !new RegExp('@' + COLLEGE_EMAIL_DOMAIN.replace(/\./g, '\\.') + '$', 'i').test(user.email)) {
+      S.authMsg = 'You signed in as ' + user.email + '. Please use your @' + COLLEGE_EMAIL_DOMAIN + ' Google account.';
+      store.signOut();
+      return;
+    }
+    S.user = user; S.uid = user.uid; S.authMsg = ''; S.phase = 'board';
+    var today = istToday();
+    slowTimer = setTimeout(function () { if (!S.loaded) { S.slow = true; render(); } }, 10000);
+    unsubscribe = store.subscribe(today, addDays(today, MAX_DAYS_AHEAD + 1), function (map, fromCache) {
+      S.days = map; S.loaded = true;
+      if (!fromCache) { clearTimeout(slowTimer); S.slow = false; }
+      render();
+    }, function (err) {
+      clearTimeout(slowTimer);
+      S.slow = false; S.loaded = true;
+      S.dead = err && err.code === 'permission-denied'
+        ? 'The database refused access for this account. Sign out and use your @' + COLLEGE_EMAIL_DOMAIN + ' account.'
+        : err && err.code === 'resource-exhausted'
+          ? 'The site has hit its free daily limit. It works again tomorrow.'
+          : 'Lost the connection to the ride list. Reload the page.';
+      render();
+    });
+    render();
+  }
+
+  async function boot() {
+    readHash();
+    renderNow();
+    var cfg = FIREBASE_CONFIG;
+    if (!cfg || !cfg.apiKey || !cfg.projectId) { S.mode = 'demo'; store = demoStore(); }
+    else {
+      try { store = await liveStore(cfg); S.mode = 'live'; }
+      catch (e) {
+        S.phase = 'error';
+        S.bootError = 'The site could not load its sign-in and database code. Check your internet connection and reload.';
+        render();
+        return;
+      }
+    }
+    store.onAuth(onAuth);
+  }
+  boot();
+})();
+</script>
+</body>
+</html>
